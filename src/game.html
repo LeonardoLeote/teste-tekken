@@ -47,12 +47,13 @@ canvas{display:block}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
 .screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px;text-align:center}
 .screen.on{display:flex}
-#title{background:radial-gradient(ellipse at center,#2a0b12cc 0%,#07040aee 75%);cursor:pointer}
+#title{background:radial-gradient(ellipse at center,#2a0b12cc 0%,#07040aee 75%)}
 #title h1{font-family:Impact,"Arial Black",sans-serif;font-size:min(16vw,110px);line-height:.9;letter-spacing:3px;background:linear-gradient(#fff,#f5c542 55%,#b3521a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 0 #000) drop-shadow(0 0 25px #ff4d00aa)}
 #title h2{font-size:15px;letter-spacing:6px;color:#ddd}
 .blink{animation:blink 1s infinite;font-weight:800;letter-spacing:4px}
 @keyframes blink{50%{opacity:.2}}
 .keys{font-size:13px;color:#bbb;line-height:1.8;max-width:640px}
+.keys u{color:var(--gold);text-decoration:none;font-weight:700}
 .keys b{color:#fff;background:#fff2;border:1px solid #fff4;border-radius:4px;padding:0 6px}
 #select{background:linear-gradient(#000c,#0000 30%,#0000 60%,#000d);justify-content:space-between;padding:20px 16px}
 #select h3{font-family:Impact,"Arial Black",sans-serif;font-size:34px;letter-spacing:4px;text-shadow:0 3px 0 #000}
@@ -113,12 +114,17 @@ canvas{display:block}
 <div class="screen on" id="title">
   <h2>TORNEIO DO PUNHO DE FERRO</h2>
   <h1>IRON FIST<br>ARENA</h1>
-  <div class="blink">PRESSIONE ENTER</div>
+  <div class="menu" id="modeMenu">
+    <button class="btn on" data-mode="cpu">1 JOGADOR · VS CPU</button>
+    <button class="btn" data-mode="vs">2 JOGADORES · MESMO TECLADO</button>
+  </div>
+  <div class="blink" style="font-size:12px">↑ ↓ PARA ESCOLHER · ENTER PARA CONFIRMAR</div>
   <div class="keys">
-    Mover <b>A</b><b>D</b> / <b>←</b><b>→</b> · Agachar <b>S</b> · Pular (segurar) / Sidestep (toque) <b>W</b><br>
-    Soco E <b>U</b>=1 · Soco D <b>I</b>=2 · Chute E <b>J</b>=3 · Chute D <b>K</b>=4<br>
-    Agarrar <b>U</b>+<b>I</b> · Heat <b>I</b>+<b>J</b> ou <b>O</b> · Rage Art ↘+<b>U</b>+<b>I</b> ou <b>P</b> · Defesa: segure <b>trás</b> ou fique parado<br>
-    Dash: <b>→→</b> · Backdash: <b>←←</b> · Pausa / lista de golpes: <b>ESC</b>
+    <u>1 jogador</u>: mover <b>WASD</b> ou <b>setas</b> · 1 2 3 4 = <b>U</b><b>I</b><b>J</b><b>K</b> · Heat <b>O</b> · Rage Art <b>P</b><br>
+    <u>2 jogadores</u> — 1P: mover <b>WASD</b> · 1 2 3 4 = <b>R</b><b>T</b><b>F</b><b>G</b> · Heat <b>Y</b> · Rage <b>H</b><br>
+    2P: mover <b>setas</b> · 1 2 3 4 = <b>Num4</b><b>Num5</b><b>Num1</b><b>Num2</b> · Heat <b>Num6</b> · Rage <b>Num3</b><br>
+    2P sem teclado numérico: mover <b>I</b><b>J</b><b>K</b><b>L</b> · 1 2 3 4 = <b>P</b><b>´</b><b>Ç</b><b>~</b> · Heat <b>[</b> · Rage <b>]</b><br>
+    Agarrão 1+2 · Defesa: segure trás ou fique parado · ↑ toque = sidestep, segurar = pulo · Pausa <b>ESC</b>
   </div>
 </div>
 
@@ -235,7 +241,7 @@ function say(txt) {
 // ---------------------------------------------------------------- INPUT
 const keys = {};
 addEventListener('keydown', e => {
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(e.code)) e.preventDefault();
+  if (GAME_CODES.has(e.code) || ['Space', 'Tab'].includes(e.code)) e.preventDefault();
   if (!e.repeat) { keys[e.code] = true; onMenuKey(e.code); }
   Sfx.init();
 });
@@ -266,21 +272,35 @@ function freshDouble(hist, d) {
   return hold <= 10;
 }
 
+// Teclas por jogador (e.code = posição física, funciona em ABNT2 e US)
+const KEYMAPS = {
+  solo: { L: ['KeyA', 'ArrowLeft'], R: ['KeyD', 'ArrowRight'], U: ['KeyW', 'ArrowUp'], D: ['KeyS', 'ArrowDown'],
+    1: ['KeyU'], 2: ['KeyI'], 3: ['KeyJ'], 4: ['KeyK'], H: ['KeyO'], G: ['KeyP'] },
+  p1: { L: ['KeyA'], R: ['KeyD'], U: ['KeyW'], D: ['KeyS'],
+    1: ['KeyR'], 2: ['KeyT'], 3: ['KeyF'], 4: ['KeyG'], H: ['KeyY'], G: ['KeyH'] },
+  p2: { L: ['ArrowLeft', 'KeyJ'], R: ['ArrowRight', 'KeyL'], U: ['ArrowUp', 'KeyI'], D: ['ArrowDown', 'KeyK'],
+    1: ['Numpad4', 'KeyP'], 2: ['Numpad5', 'BracketLeft'], 3: ['Numpad1', 'Semicolon'], 4: ['Numpad2', 'Quote'], H: ['Numpad6', 'BracketRight'], G: ['Numpad3', 'Backslash'] },
+};
+const KEYLABELS = {
+  solo: { move: 'WASD ou setas', b: 'U · I · J · K', heat: 'O', rage: 'P' },
+  p1: { move: 'WASD', b: 'R · T · F · G', heat: 'Y', rage: 'H' },
+  p2: { move: 'setas (ou I J K L)', b: 'Num4 · Num5 · Num1 · Num2 (ou P · ´ · Ç · ~)', heat: 'Num6 (ou [)', rage: 'Num3 (ou ])' },
+};
+const GAME_CODES = new Set(Object.values(KEYMAPS).flatMap(m => Object.values(m).flat()));
 class HumanCtl {
-  constructor() { this.hist = []; this.prev = {}; this.pending = null; this.cmd = null; this.dir = 5; this.human = true; }
+  constructor(map = KEYMAPS.solo) { this.km = map; this.hist = []; this.prev = {}; this.pending = null; this.cmd = null; this.dir = 5; this.human = true; }
   poll(me) {
-    const L = keys.KeyA || keys.ArrowLeft, R = keys.KeyD || keys.ArrowRight;
-    const U = keys.KeyW || keys.ArrowUp, Dn = keys.KeyS || keys.ArrowDown;
+    const km = this.km, on = k => km[k].some(c => keys[c]);
+    const L = on('L'), R = on('R'), U = on('U'), Dn = on('D');
     const h = ((R ? 1 : 0) - (L ? 1 : 0)) * me.facing, v = (U ? 1 : 0) - (Dn ? 1 : 0);
     const dir = 5 + h + v * 3;
     this.dir = dir; this.hist.push(dir); if (this.hist.length > 40) this.hist.shift();
-    const map = { 1: 'KeyU', 2: 'KeyI', 3: 'KeyJ', 4: 'KeyK', H: 'KeyO', R: 'KeyP' };
     const pressed = [];
-    for (const b in map) { const on = !!keys[map[b]]; if (on && !this.prev[b]) pressed.push(b); this.prev[b] = on; }
+    for (const b of ['1', '2', '3', '4', 'H', 'G']) { const d = on(b); if (d && !this.prev[b]) pressed.push(b); this.prev[b] = d; }
     this.cmd = null;
     if (pressed.includes('H')) { this.cmd = { b: '2+3', dir, hist: this.hist.slice() }; this.pending = null; return; }
-    if (pressed.includes('R')) { this.cmd = { b: '1+2', dir: 3, rage: true, hist: this.hist.slice() }; this.pending = null; return; }
-    const btn = pressed.filter(b => b !== 'H' && b !== 'R');
+    if (pressed.includes('G')) { this.cmd = { b: '1+2', dir: 3, rage: true, hist: this.hist.slice() }; this.pending = null; return; }
+    const btn = pressed.filter(b => b !== 'H' && b !== 'G');
     if (btn.length) {
       if (!this.pending) {
         const n = this.hist.length;
@@ -366,6 +386,7 @@ const CHARS = {
     name: 'LILI', full: 'Emilie "Lili" De Rochefort', style: 'Luta de rua (estilo próprio)', from: 'Mônaco',
     scale: 0.95, bulk: 0.78, width: 0.58, walk: 0.055, dash: 0.14,
     col: { skin: 0xf7dccb, hair: 0xf4d27c, top: 0xf8f8fc, pants: 0xf8f8fc, boots: 0xf1f1f6, gloves: 0xf1f1f6, acc: 0x2f5fd6 },
+    alt: { top: 0x22222c, pants: 0x22222c, boots: 0x22222c, gloves: 0x22222c, acc: 0xc9253d },
     stance: { lean: 3, aA: 42, eA: 100, aB: 28, eB: 118, fA: 0.2, fB: -0.17, drop: 0.05 },
     win: { aA: 165, eA: 25, aB: 30, eB: 140, lean: -6, head: -8, tw: 0.3, fA: 0.1, fB: -0.08, drop: 0 },
     portrait: 'linear-gradient(160deg,#fff 0%,#f4d27c 35%,#2f5fd6 100%)',
@@ -387,6 +408,7 @@ const CHARS = {
     name: 'KING', full: 'King II', style: 'Luta-livre (Pro Wrestling)', from: 'México',
     scale: 1.1, bulk: 1.4, width: 0.72, walk: 0.045, dash: 0.13,
     col: { skin: 0xc58a5c, hair: 0xf2b124, top: 0xc58a5c, pants: 0x1d2c78, boots: 0x15151c, gloves: 0xf0f0f0, acc: 0xf2b124 },
+    alt: { pants: 0x8a1622, acc: 0xd9d9e0 },
     stance: { lean: 10, aA: 45, eA: 95, aB: 32, eB: 100, fA: 0.3, fB: -0.28, drop: 0.1 },
     win: { aA: 95, eA: 95, aB: 95, eB: 95, lean: -8, head: -15, tw: 0, fA: 0.28, fB: -0.28, drop: 0.12 },
     portrait: 'radial-gradient(circle at 50% 35%,#f2b124 0%,#c9750c 45%,#1d2c78 100%)',
@@ -407,6 +429,7 @@ const CHARS = {
     name: 'PAUL', full: 'Paul Phoenix', style: 'Artes marciais (base Judô)', from: 'EUA',
     scale: 1.02, bulk: 1.12, width: 0.64, walk: 0.05, dash: 0.14,
     col: { skin: 0xf0c9a8, hair: 0xf6dc6a, top: 0xb3131b, pants: 0xb3131b, boots: 0x18181f, gloves: 0x131316, acc: 0x111111 },
+    alt: { top: 0x1c3f9e, pants: 0x1c3f9e, acc: 0xf2f2f2 },
     stance: { lean: 12, aA: 40, eA: 115, aB: 22, eB: 130, fA: 0.28, fB: -0.26, drop: 0.1 },
     win: { aA: 20, eA: 150, aB: 168, eB: 15, lean: -6, head: -12, tw: -0.3, fA: 0.2, fB: -0.2, drop: 0.02 },
     portrait: 'linear-gradient(170deg,#f6dc6a 0%,#b3131b 55%,#140305 100%)',
@@ -427,6 +450,7 @@ const CHARS = {
     name: 'HEIHACHI', full: 'Heihachi Mishima', style: 'Karatê estilo Mishima', from: 'Japão',
     scale: 0.99, bulk: 1.22, width: 0.64, walk: 0.048, dash: 0.14,
     col: { skin: 0xd9a47c, hair: 0xd8d8d8, top: 0xd9a47c, pants: 0x1a1a22, boots: 0xd9a47c, gloves: 0xd9a47c, acc: 0xe8e2d0 },
+    alt: { pants: 0xe8e2d0, acc: 0x7a1420 },
     stance: { lean: 8, aA: 35, eA: 95, aB: 12, eB: 112, fA: 0.3, fB: -0.3, drop: 0.14 },
     win: { aA: 45, eA: 130, aB: 45, eB: 130, lean: -4, head: -10, tw: 0, fA: 0.22, fB: -0.22, drop: 0.04 },
     portrait: 'linear-gradient(170deg,#d8d8d8 0%,#6a5a4a 45%,#0c0c14 100%)',
@@ -679,8 +703,8 @@ function jaguarTex() {
     }
   });
 }
-function buildModel(id) {
-  const c = CHARS[id], S = c.scale, B = c.bulk, col = c.col;
+function buildModel(id, alt) {
+  const c = CHARS[id], S = c.scale, B = c.bulk, col = alt ? Object.assign({}, c.col, c.alt) : c.col;
   const mats = [];
   const mat = (hex, o = {}) => { const m = new THREE.MeshStandardMaterial(Object.assign({ color: hex, roughness: 0.55, metalness: 0.04 }, o)); mats.push(m); return m; };
   const M = {
@@ -777,7 +801,7 @@ function buildModel(id) {
     const belt = mk(new THREE.TorusGeometry(R(0.14), R(0.03), 8, 24), M.acc, 0, R(0.02), 0, waist); belt.rotation.x = Math.PI / 2; belt.scale.y = 1.2;
     const plate = mk(new THREE.BoxGeometry(R(0.03), R(0.1), R(0.14)), M.acc, R(0.16), R(0.02), 0, waist);
     // capa curta
-    const cape = mk(new THREE.CylinderGeometry(R(0.22), R(0.34), R(0.5), 20, 1, true, Math.PI * 1.1, Math.PI * 0.8), mat(0x1d2c78, { side: THREE.DoubleSide }), 0, R(0.28), 0, waist);
+    const cape = mk(new THREE.CylinderGeometry(R(0.22), R(0.34), R(0.5), 20, 1, true, Math.PI * 1.1, Math.PI * 0.8), mat(col.pants, { side: THREE.DoubleSide }), 0, R(0.28), 0, waist);
   } else if (id === 'paul') {
     // flattop
     mk(new THREE.BoxGeometry(R(0.19), R(0.28), R(0.2)), M.hair, -R(0.01), L.head * 1.9, 0, head);
@@ -845,9 +869,9 @@ function applyPose(m, p, y) {
 // ---------------------------------------------------------------- LUTADOR
 const FREE = ['idle', 'walk', 'crouch', 'dash', 'backdash'];
 class Fighter {
-  constructor(id, idx, ctl) {
+  constructor(id, idx, ctl, alt) {
     this.id = id; this.c = CHARS[id]; this.idx = idx; this.ctl = ctl;
-    this.model = buildModel(id); scene.add(this.model.root);
+    this.model = buildModel(id, alt); scene.add(this.model.root);
     this.pose = resolvePose(this.c.stance, {}, this.model.L);
     this.wins = 0;
     this.reset();
@@ -1409,7 +1433,7 @@ class CpuCtl {
 
 // ---------------------------------------------------------------- JOGO
 const G = {
-  mode: 'title', frame: 0, fighters: [], paused: false, hitstop: 0, freeze: 0, shake: 0, slow: 0,
+  mode: 'title', versus: false, titleSel: 0, frame: 0, fighters: [], paused: false, hitstop: 0, freeze: 0, shake: 0, slow: 0,
   throw: null, cine: null, cineFocus: null, round: 1, timer: ROUND_TIME, timerF: 0, rstate: 'intro', rt: 0,
   sel: { phase: 'p1', c: [0, 1], diff: 1 }, preview: [], p1: 'lili', p2: 'king', diff: 'normal',
   onKO(att, def) {
@@ -1422,7 +1446,9 @@ const G = {
 
 function makeFighters() {
   G.fighters.forEach(f => disposeModel(f.model));
-  G.fighters = [new Fighter(G.p1, 0, new HumanCtl()), new Fighter(G.p2, 1, new CpuCtl(G.diff))];
+  G.fighters = G.versus
+    ? [new Fighter(G.p1, 0, new HumanCtl(KEYMAPS.p1)), new Fighter(G.p2, 1, new HumanCtl(KEYMAPS.p2), G.p1 === G.p2)]
+    : [new Fighter(G.p1, 0, new HumanCtl(KEYMAPS.solo)), new Fighter(G.p2, 1, new CpuCtl(G.diff), G.p1 === G.p2)];
 }
 function startMatch() {
   clearPreview();
@@ -1430,8 +1456,9 @@ function startMatch() {
   G.fighters.forEach(f => f.wins = 0);
   G.round = 1; G.mode = 'fight'; G.paused = false;
   showScreen(null); $('hud').style.display = 'block';
-  $('touch').classList.add('on');
-  $('n0').textContent = CHARS[G.p1].name; $('n1').textContent = CHARS[G.p2].name;
+  $('touch').classList.toggle('on', !G.versus);
+  $('n0').textContent = (G.versus ? '1P · ' : '') + CHARS[G.p1].name;
+  $('n1').textContent = (G.versus ? '2P · ' : '') + CHARS[G.p2].name;
   startRound();
 }
 function startRound() {
@@ -1451,10 +1478,15 @@ function endRound() {
   renderPips();
   if (a.wins >= 2 || b.wins >= 2 || G.round >= 5) {
     G.mode = 'result';
-    const won = a.wins > b.wins;
-    $('resTitle').textContent = won ? 'VOCÊ VENCEU!' : 'VOCÊ PERDEU';
-    $('resSub').textContent = `${CHARS[G.p1].name} ${a.wins} × ${b.wins} ${CHARS[G.p2].name}  ·  ${LEVELS[G.diff].name}`;
-    say(won ? 'You win' : 'You lose');
+    const won = a.wins > b.wins, draw = a.wins === b.wins;
+    if (G.versus) {
+      $('resTitle').textContent = draw ? 'EMPATE' : (won ? '1P' : '2P') + ' VENCEU!';
+      say(draw ? 'Draw' : won ? 'Player one wins' : 'Player two wins');
+    } else {
+      $('resTitle').textContent = won ? 'VOCÊ VENCEU!' : 'VOCÊ PERDEU';
+      say(won ? 'You win' : 'You lose');
+    }
+    $('resSub').textContent = `${CHARS[G.p1].name} ${a.wins} × ${b.wins} ${CHARS[G.p2].name}  ·  ${G.versus ? '1P VS 2P' : LEVELS[G.diff].name}`;
     setTimeout(() => { if (G.mode === 'result') { clearAnnounce(); showScreen('result'); } }, 900);
     return;
   }
@@ -1533,6 +1565,7 @@ function stepFight() {
     if (G.rt > 90 && settled && G.winner && G.winner.state !== 'win') {
       G.winner.set('win'); const l = G.fighters.find(f => f !== G.winner); if (!l.ko) l.set('lose');
       if (G.winner.hp === MAX_HP) { announce('PERFECT', '', true); say('Perfect'); }
+      else if (G.versus) { announce(CHARS[G.winner.id].name + ' VENCE', '', true, G.winner === a ? '1P' : '2P'); }
       else { announce(G.winner === a ? 'VOCÊ VENCE' : CHARS[G.winner.id].name + ' VENCE', '', true); }
     }
     if (G.rt > 90 && settled && !G.winner && G.rt === 91) { announce('EMPATE', '', true); }
@@ -1634,21 +1667,21 @@ function refreshSelect() {
     el.classList.toggle('p1', s.c[0] === i); el.classList.toggle('p2', s.c[1] === i && s.phase !== 'p1');
     el.querySelectorAll('.badge').forEach(b => b.remove());
     if (s.c[0] === i) el.insertAdjacentHTML('beforeend', '<div class="badge b1">1P</div>');
-    if (s.c[1] === i && s.phase !== 'p1') el.insertAdjacentHTML('beforeend', '<div class="badge b2">CPU</div>');
+    if (s.c[1] === i && s.phase !== 'p1') el.insertAdjacentHTML('beforeend', `<div class="badge b2">${G.versus ? '2P' : 'CPU'}</div>`);
   });
   $('diff').querySelectorAll('.btn').forEach((el, i) => el.classList.toggle('on', i === s.diff));
   $('diff').style.visibility = s.phase === 'diff' ? 'visible' : 'hidden';
-  $('selHint').textContent = s.phase === 'p1' ? 'JOGADOR 1: ESCOLHA SEU LUTADOR' : s.phase === 'p2' ? 'ESCOLHA O OPONENTE (CPU)' : 'ESCOLHA A DIFICULDADE';
+  $('selHint').textContent = s.phase === 'p1' ? 'JOGADOR 1: ESCOLHA SEU LUTADOR' : s.phase === 'p2' ? (G.versus ? 'JOGADOR 2: ESCOLHA SEU LUTADOR' : 'ESCOLHA O OPONENTE (CPU)') : 'ESCOLHA A DIFICULDADE';
   const inf = (i, lbl) => { const c = CHARS[ROSTER[s.c[i]]]; return `${lbl}<b>${c.name}</b>${c.full}<br>${c.style} · ${c.from}`; };
   $('info0').innerHTML = inf(0, '1P');
-  $('info1').innerHTML = s.phase === 'p1' ? '' : inf(1, 'CPU');
+  $('info1').innerHTML = s.phase === 'p1' ? '' : inf(1, G.versus ? '2P' : 'CPU');
   updatePreview();
 }
 function confirmSelect() {
   const s = G.sel; Sfx.ok();
   if (s.phase === 'p1') { s.phase = 'p2'; say(CHARS[ROSTER[s.c[0]]].name); }
-  else if (s.phase === 'p2') { s.phase = 'diff'; }
-  else { G.p1 = ROSTER[s.c[0]]; G.p2 = ROSTER[s.c[1]]; G.diff = Object.keys(LEVELS)[s.diff]; startMatch(); return; }
+  else if (s.phase === 'p2' && !G.versus) { s.phase = 'diff'; }
+  else { if (s.phase === 'p2') say(CHARS[ROSTER[s.c[1]]].name); G.p1 = ROSTER[s.c[0]]; G.p2 = ROSTER[s.c[1]]; G.diff = Object.keys(LEVELS)[s.diff]; startMatch(); return; }
   refreshSelect();
 }
 function openSelect() {
@@ -1662,12 +1695,13 @@ const previewIds = [null, null];
 function updatePreview() {
   const s = G.sel;
   const ids = [ROSTER[s.c[0]], s.phase === 'p1' ? null : ROSTER[s.c[1]]];
+  const keysP = [ids[0], ids[1] && ids[1] + (ids[0] === ids[1] ? '*' : '')];
   for (let i = 0; i < 2; i++) {
-    if (previewIds[i] === ids[i]) continue;
+    if (previewIds[i] === keysP[i]) continue;
     if (G.preview[i]) { disposeModel(G.preview[i].model); G.preview[i] = null; }
-    previewIds[i] = ids[i];
+    previewIds[i] = keysP[i];
     if (ids[i]) {
-      const f = { model: buildModel(ids[i]), id: ids[i] };
+      const f = { model: buildModel(ids[i], i === 1 && ids[0] === ids[1]), id: ids[i] };
       scene.add(f.model.root);
       f.model.root.position.set(i ? 1.1 : -1.1, 0, 0);
       f.model.root.rotation.y = i ? Math.PI + 0.5 : -0.5;
@@ -1692,23 +1726,25 @@ function clearPreview() {
   G.preview.forEach(f => f && disposeModel(f.model)); G.preview = []; previewIds[0] = previewIds[1] = null;
 }
 function buildMoves() {
-  const ids = [G.p1];
-  const rows = ids.map(id => {
+  const ids = G.versus ? [G.p1, G.p2] : [G.p1];
+  const rows = ids.map((id, pi) => {
     const c = CHARS[id];
     const all = [...c.moves.filter(m => m.cmd !== 'x'), c.heat];
     if (id === 'heihachi') all.push(c.dict.hewgf);
-    return `<h4>${c.name} — ${c.style}</h4><table>${all.map(m => {
+    return `<h4>${G.versus ? (pi ? '2P · ' : '1P · ') : ''}${c.name} — ${c.style}</h4><table>${all.map(m => {
       const lv = { h: 'alto', m: 'médio', l: 'baixo' }[m.level] || '';
       const tags = [lv, m.launch ? 'launcher' : '', m.knock ? 'derruba' : '', m.chLaunch ? 'launcher no counter' : '', m.homing ? 'homing' : ''].filter(Boolean).join(' · ');
       return `<tr><td>${m.inp}</td><td>${m.name}</td><td style="color:#999">${tags}</td></tr>`;
     }).join('')}
     <tr><td>1+2</td><td>${c.throwName} (agarrão)</td><td style="color:#999">escape: 1 ou 2</td></tr></table>`;
   }).join('');
-  $('moves').innerHTML = `<h3 style="font-family:Impact;font-size:40px;letter-spacing:3px">LISTA DE GOLPES</h3>${rows}
+  const ctlRows = (G.versus ? [['1P', KEYLABELS.p1], ['2P', KEYLABELS.p2]] : [['', KEYLABELS.solo]]).map(([who, k]) =>
+    `<tr><td>${who} mover</td><td>${k.move}</td><td></td></tr><tr><td>${who} 1 · 2 · 3 · 4</td><td>${k.b}</td><td></td></tr><tr><td>${who} Heat / Rage</td><td>${k.heat} / ${k.rage}</td><td></td></tr>`).join('');
+  $('moves').innerHTML = `<h3 style="font-family:Impact;font-size:40px;letter-spacing:3px">LISTA DE GOLPES</h3><h4>CONTROLES</h4><table>${ctlRows}</table>${rows}
   <h4>SISTEMA</h4><table>
-  <tr><td>2+3 (ou O)</td><td>Heat Burst — ativa o modo Heat (1× por round): +10% dano e dano na defesa</td><td></td></tr>
+  <tr><td>2+3 (ou tecla Heat)</td><td>Heat Burst — ativa o modo Heat (1× por round): +10% dano e dano na defesa</td><td></td></tr>
   <tr><td>2+3 em Heat</td><td>Heat Smash — golpe especial que consome o Heat</td><td></td></tr>
-  <tr><td>↘+1+2 (ou P)</td><td>Rage Art — com vida ≤ 25%, cinemático com armadura</td><td></td></tr>
+  <tr><td>↘+1+2 (ou tecla Rage)</td><td>Rage Art — com vida ≤ 25%, cinemático com armadura</td><td></td></tr>
   <tr><td>← / parado</td><td>Defesa alta e média · ↓ ou ↙ defende baixos</td><td></td></tr>
   <tr><td>↑ toque / segurar</td><td>Sidestep (esquiva lateral) / Pulo</td><td></td></tr>
   <tr><td>→→ / ←←</td><td>Dash / Backdash</td><td></td></tr>
@@ -1724,13 +1760,23 @@ function menuAct(a) {
   else if (a === 'restart') { startMatch(); }
   else if (a === 'select') { openSelect(); }
 }
+function setTitleMode(i) {
+  G.titleSel = i;
+  document.querySelectorAll('#modeMenu .btn').forEach((b, k) => b.classList.toggle('on', k === i));
+}
+function startMode(versus) { G.versus = versus; Sfx.init(); Sfx.ok(); openSelect(); }
+document.querySelectorAll('#modeMenu .btn').forEach((b, k) => b.addEventListener('click', e => { e.stopPropagation(); setTitleMode(k); startMode(k === 1); }));
 function onMenuKey(code) {
-  const confirm = code === 'Enter' || code === 'KeyU' || code === 'Space';
+  const confirm = ['Enter', 'NumpadEnter', 'Space', 'KeyU', 'KeyR', 'KeyP', 'Numpad4'].includes(code);
   const back = code === 'Escape' || code === 'Backspace';
-  if (G.mode === 'title') { if (confirm) { Sfx.init(); Sfx.ok(); openSelect(); } return; }
+  if (G.mode === 'title') {
+    if (['KeyW', 'ArrowUp', 'KeyS', 'ArrowDown', 'KeyI', 'KeyK'].includes(code)) { setTitleMode(1 - (G.titleSel || 0)); Sfx.ui(); }
+    if (confirm) startMode((G.titleSel || 0) === 1);
+    return;
+  }
   if (G.mode === 'select') {
     const s = G.sel;
-    const L = code === 'KeyA' || code === 'ArrowLeft', R = code === 'KeyD' || code === 'ArrowRight';
+    const L = ['KeyA', 'ArrowLeft', 'KeyJ'].includes(code), R = ['KeyD', 'ArrowRight', 'KeyL'].includes(code);
     if (s.phase === 'diff') {
       if (L) { s.diff = (s.diff + 2) % 3; Sfx.ui(); refreshSelect(); }
       if (R) { s.diff = (s.diff + 1) % 3; Sfx.ui(); refreshSelect(); }
@@ -1755,14 +1801,13 @@ function onMenuKey(code) {
     return;
   }
   if (G.mode === 'result' && $('result').classList.contains('on')) {
-    if (code === 'Enter') startMatch();
+    if (code === 'Enter' || code === 'NumpadEnter') startMatch();
     if (code === 'Escape') openSelect();
   }
 }
 
 // ---------------------------------------------------------------- LOOP
 buildStage(); buildPetals(); buildSelect();
-$('title').addEventListener('click', () => { if (G.mode === 'title') { Sfx.init(); Sfx.ok(); openSelect(); } });
 let last = performance.now(), acc = 0;
 function loop(now) {
   requestAnimationFrame(loop);
